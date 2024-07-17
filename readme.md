@@ -1,3 +1,5 @@
+a small project: forking this repo to try and add x11 (linux) support
+
 a very simple experiment to see if i can make a game in C89 without the standard library.
 
 Windows example building with GCC:
