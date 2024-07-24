@@ -7,8 +7,14 @@
 #ifdef __linux__
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/keysym.h>
+
+/* C STANDARD LIBRARY INCLUDES */
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #include "game.h"
 /*#include "sleep_x11.h"*/
@@ -19,6 +25,7 @@ static struct Platform
     NB_BOOL  closing;
     Window   window;
     NB_RGB   buffer[NB_WIDTH * NB_HEIGHT];
+    XImage*  image;
     Display* display; /* connection to X server */
     Atom     wm_delete_window; /* info to allow us to handle closing the window */
     Atom     wm_protocols;
@@ -28,14 +35,19 @@ void ls_x11_poll(void);
 
 void ls_x11_run(void)
 {
+    /* must declare variables at start of function in c89 */
     NB_INT x, y;
+    XExposeEvent expose_event;
+    XWindowAttributes attributes;
 
     platform.closing = NB_FALSE;
     platform.framecounter = 0;
+    memset(&expose_event, 0, sizeof(XExposeEvent));
 
     /* open window */
     platform.display = XOpenDisplay(NULL); /* !!! should check for errors on all these */
-    platform.window = XCreateSimpleWindow(platform.display, XDefaultRootWindow(platform.display), 0, 0, NB_WIDTH * 4, NB_HEIGHT * 4, 0, 0, 0x00000000);
+    platform.window = XCreateSimpleWindow(platform.display, XDefaultRootWindow(platform.display), 0, 0,
+                                          NB_WIDTH * 4, NB_HEIGHT * 4, 0, 0, 0x00000000);
 
     XStoreName(platform.display, platform.window, NB_TITLE);
     XMapWindow(platform.display, platform.window);
@@ -45,7 +57,11 @@ void ls_x11_run(void)
     platform.wm_delete_window = XInternAtom(platform.display, "WM_DELETE_WINDOW", NB_FALSE);
     XSetWMProtocols(platform.display, platform.window, &platform.wm_delete_window, 1);
 
-    /* get screen buffer  pixmap? */
+    /* create image */
+    XGetWindowAttributes(platform.display, platform.window, &attributes);
+    /* !!! check if depth = 1 is correct */
+    platform.image = XCreateImage(platform.display, attributes.visual, 1, ZPixmap, 0, (char*)platform.buffer,
+                                  NB_WIDTH, NB_HEIGHT, 32, NB_WIDTH * sizeof(NB_RGB));
 
     /* run the game */
     nb_init();
@@ -54,18 +70,26 @@ void ls_x11_run(void)
         nb_step();
         
         /* Copy Palette Screen data to our RGB buffer */
+        for (x = 0; x < NB_WIDTH; x ++)
+            for (y = 0; y < NB_HEIGHT; y ++)
+                platform.buffer[x + y * NB_WIDTH] = nb_game.palette[nb_game.screen[x + y * NB_WIDTH]];
 
-        /* Copy to buffer */
+        /* put image on screen? or */
+        /* send Expose event */
+        expose_event.display = platform.display; /* MORE? */
+        
+        XSendEvent(platform.display, platform.window, NB_FALSE, ExposureMask, (XEvent*)&expose_event);
 
-        /* send Expose event  */
+        /* TESTING */
+        XPutImage(platform.display, platform.window, XDefaultGC(platform.display, 0), platform.image, 0, 0, 0, 0, NB_WIDTH, NB_HEIGHT); 
 
         /* poll events */
         ls_x11_poll();
 
         /* faking v-sync */
-        /*platform.framecounter += (1000.0 / NB_FRAMERATE);
+        platform.framecounter += (1000.0 / NB_FRAMERATE);
         sleep((NB_INT)(platform.framecounter / 1000.0));
-        platform.framecounter -= (NB_INT)platform.framecounter;*/
+        platform.framecounter -= (NB_INT)platform.framecounter;
     }
     
     /* shutdown */
@@ -102,7 +126,8 @@ void ls_x11_poll(void)
                 break;
 
             case Expose: /* equivalent to WM_PAINT */
-                
+                XPutImage(platform.display, platform.window, XDefaultGC(platform.display, 0), platform.image, 0, 0, 0, 0, NB_WIDTH, NB_HEIGHT); 
+                XDrawString(platform.display, platform.window, XDefaultGC(platform.display, 0), 0, 0, "THINGLY", 7);
                 break;
         }
     }
