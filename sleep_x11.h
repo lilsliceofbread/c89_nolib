@@ -8,14 +8,14 @@
 #include <unistd.h>
 #include <sys/param.h>
 
-// TODO: REMOVE OTHER STDLIB HEADERS, create own types e.g. time_t, timespec
-// * standard library implementation of sleep with linux kernel syscalls (idk how the hell else to do this)
+/* TODO: REMOVE OTHER STDLIB HEADERS, create own types e.g. time_t, timespec */
+/* standard library implementation of sleep with linux kernel syscalls (idk how the hell else to do this) */
 /* We are going to use the `nanosleep' syscall of the kernel.  But the
    kernel does not implement the stupid SysV SIGCHLD vs. SIG_IGN
    behaviour for this syscall.  Therefore we have to emulate it here.  */
 unsigned int sleep(unsigned int seconds)
 {
-    // 32 bit num with top bit as 0
+    /* 32 bit num with top bit as 0 */
     const unsigned int max = (unsigned int)(((unsigned long int)(~((time_t)0))) >> 1);
     struct timespec ts;
     sigset_t set, oset;
@@ -69,8 +69,6 @@ again:
        have to do anything here.  */
         if(oact.sa_handler == SIG_IGN)
         {
-            //__libc_cleanup_push (cl, &oset);
-
             /* We should leave SIGCHLD blocked.  */
             while (1)
             {
@@ -85,8 +83,6 @@ again:
                     seconds -= (unsigned int)ts.tv_nsec;
                 }
             }
-
-            //__libc_cleanup_pop (0);
 
             saved_errno = errno;
             /* Restore the original signal mask.  */
