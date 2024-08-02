@@ -9,24 +9,26 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <linux/time.h>
+#include <sys/mman.h>
 
 /* C STANDARD LIBRARY INCLUDES */
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "game.h"
-/*#include "sleep_x11.h"*/
 
 /** TODO
- * remove standard library functions
- * create sleep function/find linux equivalent
+ * remove stdlib (replace malloc/free with mmap?)
  * optimise image resize
  * fix occasional image duplicate from not clearing?
+ * change README
+ * ls->nb?
  */
+
+#define MIN(a, b) ((a) < (b) ? a : b)
 
 static struct Platform
 {
-    NB_FLT   framecounter;
     NB_BOOL  closing;
     NB_RGB*  buffer;
     XImage*  image;   /* wrapper around our buffer to tell X11 how to handle it */
@@ -34,29 +36,35 @@ static struct Platform
     Window   window;
     Atom     wm_delete_window; /* info to allow us to handle closing the window */
     Atom     wm_protocols;
+    NB_DBL   time_offset; /* timer offset to reduce floating point error */
 } platform;
-
-#define MIN(a, b) ((a) < (b) ? a : b)
 
 void ls_x11_poll(void);
 void ls_x11_create_image(void);
+NB_DBL ls_x11_get_time(void);
 
 void ls_x11_run(void)
 {
     /* must declare variables at start of function in c89 */
     NB_INT x, y;
+    NB_DBL time;
     XWindowAttributes attributes;
 
     platform.closing = NB_FALSE;
-    platform.framecounter = 0;
     platform.buffer = malloc(NB_WIDTH * NB_HEIGHT * sizeof(NB_RGB));
+
+    /* setup timer for faking v-sync */
+    platform.time_offset = 0;
+    platform.time_offset = ls_x11_get_time();
 
     /* open window */
     platform.display = XOpenDisplay(NULL);
     if(platform.display == NULL)
-        exit(-1);
+        return;
 
-    platform.window = XCreateSimpleWindow(platform.display, XDefaultRootWindow(platform.display), 0, 0, NB_WIDTH * 4, NB_HEIGHT * 4, 0, 0, 0x00000000);
+    platform.window = XCreateSimpleWindow(platform.display, XDefaultRootWindow(platform.display),
+                                          0, 0, NB_WIDTH * 4, NB_HEIGHT * 4,
+                                          0, 0, 0);
     XStoreName(platform.display, platform.window, NB_TITLE);
     XMapWindow(platform.display, platform.window);
     XSelectInput(platform.display, platform.window, KeyPressMask | KeyReleaseMask);
@@ -91,9 +99,12 @@ void ls_x11_run(void)
         ls_x11_poll();
 
         /* faking v-sync */
-        platform.framecounter += (1000.0 / NB_FRAMERATE);
-        usleep((NB_INT)(platform.framecounter * 1000.0));
-        platform.framecounter -= (NB_INT)platform.framecounter;
+        time = ls_x11_get_time();
+        while(1)
+        {
+            if(1000.0 / NB_FRAMERATE < ls_x11_get_time() - time)
+                break;
+        }
     }
     
     /* shutdown */
@@ -152,10 +163,11 @@ void ls_x11_create_image(void)
 
     XGetWindowAttributes(platform.display, platform.window, &attributes);
     size_multiplier = MIN((NB_UINT)(attributes.width / NB_WIDTH), (NB_UINT)(attributes.height / NB_HEIGHT));
+
     /* window too small to display screen */
     if(size_multiplier == 0)
     {
-        exit(-1);
+        return;
     }
 
     new_width = NB_WIDTH * size_multiplier;
@@ -196,6 +208,16 @@ void ls_x11_create_image(void)
             }
         }
     }
+}
+
+NB_DBL ls_x11_get_time(void)
+{
+    struct timespec os_time;
+
+    clock_gettime(CLOCK_REALTIME, &os_time);    
+
+    /* time in milliseconds */
+    return ((NB_DBL)1000 * (NB_DBL)os_time.tv_sec + 0.000001 * (NB_DBL)os_time.tv_nsec) - platform.time_offset;
 }
 
 /* without libc wrapping it, _start() is the correct entry point */

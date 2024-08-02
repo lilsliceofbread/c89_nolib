@@ -1,6 +1,10 @@
-a small project: forking this repo to try and add x11 (linux) support
+# x11 implementation for c89_nolib
 
-WIP: currently using stdlib because X11 requires it. hopefully i find a workaround...
+WIP: still linking to stdlib
+
+requires: `sudo apt install linux-headers-generic`
+
+building: `./build.sh`
 
 Original README:
 

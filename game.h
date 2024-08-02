@@ -2,6 +2,7 @@
 #define NB_GAME_H
 
 /* Types */
+#define NB_DBL   double
 #define NB_FLT   float
 #define NB_INT   int
 #define NB_UINT  unsigned int
