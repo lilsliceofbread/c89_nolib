@@ -1,9 +1,11 @@
 .text
 
+# %rax must contain the number of the syscall
+# the rest of the arguments to the syscall are the same as the normal function parameter registers so no need to list them
 .global mmap
 mmap:
     mov $9, %rax
-    mov %rcx, %r10
+    mov %rcx, %r10 # don't know exactly why this is required, but it works
     syscall
     ret
 

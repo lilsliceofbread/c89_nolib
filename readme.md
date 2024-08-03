@@ -11,8 +11,10 @@ For non-Windows, a different Platform implementation must to be defined, which i
 
 # X11 (linux) implementation
 
-this implementation does not use libc, however libX11.so requires it so running `ldd` on the executable shows libc.so 
+NOTE: this implementation does not use libc, however X11 requires it so running `ldd game` shows libc.so as linked
 
-requires: `sudo apt install libx11-dev linux-headers-generic`
+only works on 64-bit (to add additional support must change assembly in syscalls.S)
+
+requirements: `sudo apt install libx11-dev linux-headers-generic`
 
 build with: `chmod +x ./build_x11.sh` and `./build_x11.sh`

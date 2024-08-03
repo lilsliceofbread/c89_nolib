@@ -16,12 +16,12 @@
 
 #define PROT_READ 0x1
 #define PROT_WRITE 0x2
-#define MAP_PRIVATE 0x2
-#define MAP_ANONYMOUS 0x20
+#define MAP_PRIVATE 0x2 /* mapping is only available to our process */
+#define MAP_ANONYMOUS 0x20 /* memory allocation is not a file (also pass -1 as fd) */
 
 #define MIN(a, b) ((a) < (b) ? a : b)
 #define ALLOCATE(size) mmap(NULL, (size), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
-#define DEALLOCATE(addr, size) munmap((addr), (size))
+#define DEALLOCATE(address, size) munmap((address), (size))
 
 static struct Platform
 {
